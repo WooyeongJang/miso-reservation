@@ -15,7 +15,13 @@
 ## 매뉴얼
 
 - [사용자 매뉴얼](docs/user-manual.md) — 방문객이 예약하는 순서
-- [관리자 매뉴얼](docs/admin-manual.md) — 운영 시간 조정, 예약자 확인·삭제
+- [관리자 매뉴얼](docs/admin-manual.md) — 운영 시간 조정, 예약자 확인·삭제 ([PDF](docs/admin-manual.pdf), A4 10쪽)
+
+PDF 는 `docs/admin-manual.html` 을 Chromium 으로 인쇄한 것입니다. 내용을 고친 뒤 다시 만들려면:
+
+```bash
+cd docs && chromium --headless=new --no-pdf-header-footer --print-to-pdf=admin-manual.pdf "file://$PWD/admin-manual.html"
+```
 
 ## 주요 기능
 

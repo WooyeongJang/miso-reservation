@@ -4,6 +4,19 @@
 10분 단위 시간을 골라 예약하고, 담당자는 관리자 화면에서 운영 시간을 조정하고 예약자를 확인합니다.
 기존 체험 사이트(healthzone.misoinfo.co.kr)의 글씨체(Pretendard), 색상, 여백, 버튼 스타일을 그대로 가져왔습니다.
 
+## 화면
+
+휴대폰(390×844) 기준 화면입니다.
+
+| 예약 입력 | 시간 선택 | 예약 완료 | 관리자 목록 | 시간 설정 |
+|---|---|---|---|---|
+| <img src="docs/images/user-01-home.png" width="150"> | <img src="docs/images/user-02-select-time.png" width="150"> | <img src="docs/images/user-05-done.png" width="150"> | <img src="docs/images/admin-02-list.png" width="150"> | <img src="docs/images/admin-04-settings.png" width="150"> |
+
+## 매뉴얼
+
+- [사용자 매뉴얼](docs/user-manual.md) — 방문객이 예약하는 순서
+- [관리자 매뉴얼](docs/admin-manual.md) — 운영 시간 조정, 예약자 확인·삭제
+
 ## 주요 기능
 
 ### 방문객 화면

@@ -1,0 +1,9 @@
+{
+  "name": "miso-reservation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "체험 부스 예약 (10분 단위, 2시간 이내)",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

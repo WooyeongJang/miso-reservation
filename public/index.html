@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <title>체험 부스 예약</title>
+
+    <!-- 글씨체: 기존 체험 사이트와 같은 Pretendard -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+    // 화면 높이를 실제 보이는 높이에 맞춘다 (기존 체험 사이트와 같은 방식 — iOS 사파리 주소창 대응)
+    (function () {
+        var root = document.documentElement;
+        function fit() {
+            var h = Math.round(window.innerHeight || 0);
+            if (h > 200) { root.style.setProperty('--app-h', h + 'px'); root.classList.add('app-h'); }
+        }
+        fit();
+        window.addEventListener('resize', fit);
+        window.addEventListener('orientationchange', function () { setTimeout(fit, 250); });
+        window.addEventListener('pageshow', fit);
+        setInterval(fit, 700);
+    })();
+    </script>
+</head>
+<body>
+<div id="main">
+
+    <!-- ========================================================= 화면 1 : 예약 입력 -->
+    <div class="wrap screen" id="screenReserve" data-screen="reserve">
+        <header class="top-bar">
+            <div class="eyebrow">
+                <span class="diamond" aria-hidden="true">&#9671;</span>
+                <span class="label">EXPERIENCE BOOTH</span>
+            </div>
+        </header>
+
+        <main class="k_section" role="main">
+            <div class="step-row">
+                <span class="num" aria-hidden="true">&#9312;</span>
+                <span class="label">예약 정보 입력</span>
+            </div>
+
+            <h1 class="page-heading"><span data-bind="boothName">체험 부스</span> 예약</h1>
+            <p class="page-subtext">예약은 <b>10분 단위</b>로, 지금부터 <b><span data-bind="windowText">2시간</span> 이내</b>의 시간만 가능해요<br>예약 시간에 맞춰 부스로 와주세요.<br>체험 전에 체험 담당자가 연락드릴 수 있어요.</p>
+
+            <div class="form-section">
+                <div class="field">
+                    <label class="field-label" for="nameInput">이름</label>
+                    <input class="field-input" id="nameInput" type="text" maxlength="20" autocomplete="name" placeholder="홍길동">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="phoneInput">휴대폰 번호</label>
+                    <input class="field-input" id="phoneInput" type="tel" inputmode="numeric" placeholder="010-0000-0000" maxlength="13" autocomplete="tel">
+                </div>
+                <div class="field">
+                    <div class="field-label-row">
+                        <span class="field-label">예약 시간</span>
+                        <span class="field-hint" id="slotHint">현재 <span id="nowClock">--:--</span> (한국 시간)</span>
+                    </div>
+                    <div class="slot-grid" id="slotGrid" role="radiogroup" aria-label="예약 시간 선택"></div>
+                    <p class="slot-empty" id="slotEmpty" hidden></p>
+                </div>
+            </div>
+
+            <div class="notice-card">
+                <div class="notice-title">개인정보 수집·이용 안내</div>
+                <div class="notice-list">
+                    <div class="notice-item">
+                        <span class="bullet" aria-hidden="true">&#9671;</span>
+                        <div class="texts">
+                            <span class="item-title">체험 부스 예약 목적으로만 사용</span>
+                            <span class="item-sub">이름, 휴대폰 번호</span>
+                        </div>
+                    </div>
+                    <div class="notice-item">
+                        <span class="bullet" aria-hidden="true">&#9671;</span>
+                        <div class="texts">
+                            <span class="item-title">체험 이후 자동 삭제</span>
+                            <span class="item-sub">예약 시간이 지나면 <span data-bind="retainText">2시간</span> 안에 완전히 폐기</span>
+                        </div>
+                    </div>
+                    <div class="notice-item">
+                        <span class="bullet" aria-hidden="true">&#9671;</span>
+                        <div class="texts">
+                            <span class="item-title">제3자 제공 없음</span>
+                            <span class="item-sub">부스 운영 담당자만 확인</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="consent-row" id="consentRow" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="consent-box" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span class="consent-label">개인정보 수집·이용에 동의합니다</span>
+            </div>
+
+            <p class="admin-link-row"><a href="#admin" class="admin-link">관리자</a></p>
+        </main>
+
+        <div class="bottom-bar">
+            <button type="button" class="cta-btn" id="ctaBtn" disabled>예약하기</button>
+        </div>
+    </div>
+
+    <!-- ========================================================= 화면 2 : 예약 완료 -->
+    <div class="wrap screen" id="screenDone" data-screen="done" hidden>
+        <header class="top-bar">
+            <div class="eyebrow">
+                <span class="diamond" aria-hidden="true">&#9671;</span>
+                <span class="label">EXPERIENCE BOOTH</span>
+            </div>
+        </header>
+        <main class="k_section" role="main">
+            <div class="step-row">
+                <span class="num" aria-hidden="true">&#9313;</span>
+                <span class="label">예약 완료</span>
+            </div>
+            <div class="result-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#17503a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <h1 class="page-heading center">예약이 완료되었어요.</h1>
+            <p class="page-subtext center">예약 시간에 맞춰 부스로 와주세요.<br>늦으시면 다음 분께 순서가 넘어갈 수 있어요.</p>
+
+            <div class="summary-card">
+                <div class="summary-time" id="doneTime">--:--</div>
+                <div class="summary-row"><span class="k">이름</span><span class="v" id="doneName"></span></div>
+                <div class="summary-row"><span class="k">휴대폰</span><span class="v" id="donePhone"></span></div>
+                <div class="summary-row"><span class="k">날짜</span><span class="v" id="doneDate"></span></div>
+            </div>
+
+            <div class="notice-card type-warn">
+                <div class="notice-text">입력하신 이름과 휴대폰 번호는 체험이 끝난 뒤 <span data-bind="retainText">2시간</span> 안에 자동으로 삭제됩니다.</div>
+            </div>
+        </main>
+        <div class="bottom-bar">
+            <button type="button" class="cta-btn is-enabled" id="doneHomeBtn">처음으로</button>
+        </div>
+    </div>
+
+    <!-- ========================================================= 화면 3 : 관리자 -->
+    <div class="wrap screen" id="screenAdmin" data-screen="admin" hidden>
+        <header class="top-bar">
+            <div class="eyebrow">
+                <span class="diamond" aria-hidden="true">&#9671;</span>
+                <span class="label">EXPERIENCE BOOTH · ADMIN</span>
+            </div>
+        </header>
+        <main class="k_section" role="main">
+
+            <!-- 로그인 -->
+            <section id="adminLogin">
+                <h1 class="page-heading">관리자 화면</h1>
+                <p class="page-subtext">운영 시간을 조정하고 예약한 분들을 확인할 수 있어요.</p>
+                <div class="form-section">
+                    <div class="field">
+                        <label class="field-label" for="adminKeyInput">관리자 비밀번호</label>
+                        <input class="field-input" id="adminKeyInput" type="password" autocomplete="current-password" placeholder="비밀번호 입력">
+                    </div>
+                </div>
+            </section>
+
+            <!-- 로그인 후 -->
+            <section id="adminPanel" hidden>
+                <div class="admin-tabs" role="tablist">
+                    <button type="button" class="admin-tab is-active" data-tab="list" role="tab">예약 목록</button>
+                    <button type="button" class="admin-tab" data-tab="settings" role="tab">시간 설정</button>
+                </div>
+
+                <!-- 예약 목록 -->
+                <div class="admin-pane" id="paneList">
+                    <div class="admin-head">
+                        <div>
+                            <div class="admin-title">오늘 예약 <span class="count" id="resCount">0</span></div>
+                            <div class="admin-sub">서버 시간 <span id="adminNow">-</span> · 30초마다 자동 새로고침</div>
+                        </div>
+                        <button type="button" class="mini-btn" id="refreshBtn">새로고침</button>
+                    </div>
+                    <div class="res-list" id="resList"></div>
+                    <p class="slot-empty" id="resEmpty" hidden>아직 예약이 없어요.</p>
+                </div>
+
+                <!-- 시간 설정 -->
+                <div class="admin-pane" id="paneSettings" hidden>
+                    <div class="form-section tight">
+                        <div class="field">
+                            <label class="field-label" for="setBooth">부스 이름</label>
+                            <input class="field-input" id="setBooth" type="text" maxlength="30" placeholder="체험 부스">
+                        </div>
+                        <div class="field-2col">
+                            <div class="field">
+                                <label class="field-label" for="setOpen">예약 시작</label>
+                                <input class="field-input" id="setOpen" type="time" step="600">
+                            </div>
+                            <div class="field">
+                                <label class="field-label" for="setClose">예약 종료</label>
+                                <input class="field-input" id="setClose" type="time" step="600">
+                            </div>
+                        </div>
+                        <div class="field-2col">
+                            <div class="field">
+                                <label class="field-label" for="setSlot">예약 단위(분)</label>
+                                <input class="field-input" id="setSlot" type="number" inputmode="numeric" min="5" max="120" step="5">
+                            </div>
+                            <div class="field">
+                                <label class="field-label" for="setWindow">예약 가능 범위(분)</label>
+                                <input class="field-input" id="setWindow" type="number" inputmode="numeric" min="10" max="720" step="10">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="setRetain">체험 후 보관(분)</label>
+                            <input class="field-input" id="setRetain" type="number" inputmode="numeric" min="0" max="1440" step="10">
+                        </div>
+                        <p class="field-help">예약 가능 범위는 "지금부터 몇 분 이내"까지 예약을 받을지예요. 한 시간대에 한 명만 예약되고, 같은 휴대폰 번호로는 한 건만 받아요. 보관 시간이 지나면 이름·휴대폰 번호가 자동 삭제돼요.</p>
+                    </div>
+                    <p class="admin-link-row"><a href="#" class="admin-link danger" id="clearAllBtn">오늘 예약 전체 삭제</a></p>
+                </div>
+            </section>
+
+            <p class="admin-link-row"><a href="#" class="admin-link" id="adminBackBtn">예약 화면으로</a></p>
+        </main>
+        <div class="bottom-bar">
+            <button type="button" class="cta-btn is-enabled" id="adminLoginBtn">로그인</button>
+            <button type="button" class="cta-btn is-enabled" id="adminSaveBtn" hidden>설정 저장</button>
+        </div>
+    </div>
+
+    <!-- 확인/알림 모달 (네이티브 alert 가 안 뜨는 인앱 브라우저 대비) -->
+    <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
+        <div class="confirm-card" role="alertdialog" aria-modal="true">
+            <p class="confirm-message" id="confirmMessage"></p>
+            <div class="confirm-actions">
+                <button type="button" class="confirm-btn confirm-btn-secondary" id="confirmCancelBtn">취소</button>
+                <button type="button" class="confirm-btn confirm-btn-primary" id="confirmOkBtn">확인</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

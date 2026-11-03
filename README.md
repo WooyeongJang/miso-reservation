@@ -41,9 +41,9 @@ cd docs && chromium --headless=new --no-pdf-header-footer --print-to-pdf=admin-m
 - **예약 목록**: 시간순 정렬, 전화 걸기 링크, 개별 삭제, 전체 삭제, 30초 자동 새로고침
 
 ### 예약 확인 문자 (비즈고 LMS)
-- 예약이 완료되면 입력한 휴대폰 번호로 확인 문자(LMS)를 보냅니다. 인포뱅크 비즈고(Bizgo) omni API 사용.
+- 예약이 완료되면 입력한 휴대폰 번호로 확인 문자(LMS)를 보냅니다. 인포뱅크 비즈고 v2(API Key) 또는 OMNI API v1(ID/PW 토큰) 모두 지원.
 - 문자 발송에 실패해도 예약은 유지되며, 완료 화면과 관리자 목록에 "문자 실패"로 표시됩니다. 관리자 목록에서 **문자 재전송**이 가능합니다.
-- 설정은 `.env` 에 넣습니다 (`.env.example` 참고). `Bizgo_KEY` 나 `BIZGO_FROM` 이 비어 있으면 문자를 보내지 않고 예약만 받습니다.
+- 설정은 `.env` 에 넣습니다 (`.env.example` 참고). 인증 정보나 `BIZGO_FROM` 이 비어 있으면 문자를 보내지 않고 예약만 받습니다.
 
 ### 개인정보 자동 삭제
 - 예약 시간이 지나고 보관 시간(기본 **120분**)이 지나면 이름과 휴대폰 번호가 서버에서 자동 삭제됩니다.
@@ -78,11 +78,16 @@ PORT=5501 ADMIN_KEY=비밀번호 node server.js
 - 비밀 설정: `.env` (git에는 올라가지 않음)
 
 ```bash
-# .env
-Bizgo_KEY=콘솔(연동관리)에서 발급한 통합 API Key
+# .env — 인증은 (A) 또는 (B) 중 하나
+# (A) 비즈고 v2: 콘솔 > 연동관리의 통합 API Key
+Bizgo_KEY=
+# (B) OMNI API v1: ID + 비밀번호 (토큰 자동 발급·24시간 캐시)
+BIZGO_CLIENT_ID=
+BIZGO_CLIENT_PASSWD=
+
 BIZGO_FROM=비즈고에 사전 등록된 발신번호 (숫자만)
-# BIZGO_URL=https://sandbox-mars.ibapi.kr/api/comm/v1/send/omni   # 샌드박스
-# SMS_ENABLED=false                                                 # 문자 끄기
+# BIZGO_URL=https://sandbox-omni.ibapi.kr/v1/send/omni   # 샌드박스 (실제 발송 없음)
+# SMS_ENABLED=false                                      # 문자 끄기
 # ADMIN_KEY=관리자 비밀번호
 ```
 비즈고 콘솔의 연동관리에서 이 서버의 공인 IP(61.81.223.66)를 허용 목록에 등록해야 합니다.

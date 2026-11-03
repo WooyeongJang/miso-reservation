@@ -1,35 +1,56 @@
 /**
- * 예약 확인 문자 (Bizgo / 인포뱅크 비즈고, LMS)
+ * 예약 확인 문자 (인포뱅크 비즈고 / OMNI API, LMS)
  *
- *  API: POST https://mars.ibapi.kr/api/comm/v1/send/omni
- *  인증: 콘솔(연동관리)에서 발급한 통합 API Key 를 Authorization 헤더에 그대로 넣는다.
- *  발신번호(from)는 비즈고에 사전 등록된 번호여야 한다 (미등록이면 A327).
+ * 두 가지 인증 방식을 지원한다. .env 에 있는 값에 따라 자동으로 고른다.
  *
- *  .env
- *    Bizgo_KEY=통합 API Key
- *    BIZGO_FROM=발신번호 (숫자만, 예 0212345678)
- *    BIZGO_URL=(선택) 기본 https://mars.ibapi.kr/api/comm/v1/send/omni, 샌드박스는 https://sandbox-mars.ibapi.kr/api/comm/v1/send/omni
- *    SMS_ENABLED=(선택) false 로 두면 발송하지 않는다
+ *  (A) 통합 API Key  — 비즈고 v2 (mars.ibapi.kr)
+ *      Bizgo_KEY=콘솔(연동관리)에서 발급한 통합 API Key
+ *      → Authorization: {API Key}
+ *      → POST https://mars.ibapi.kr/api/comm/v1/send/omni
+ *
+ *  (B) ID + 비밀번호 — OMNI API v1 (omni.ibapi.kr)
+ *      BIZGO_CLIENT_ID=OMNI API ID
+ *      BIZGO_CLIENT_PASSWD=OMNI API 비밀번호
+ *      → POST https://omni.ibapi.kr/v1/auth/token (X-IB-Client-Id / X-IB-Client-Passwd) 로 토큰 발급 (24시간 유효, 캐시)
+ *      → Authorization: Bearer {token}
+ *      → POST https://omni.ibapi.kr/v1/send/omni
+ *
+ *  공통
+ *      BIZGO_FROM=비즈고에 사전 등록된 발신번호 (숫자만)
+ *      BIZGO_URL=(선택) 발송 주소 덮어쓰기. 샌드박스: https://sandbox-mars.ibapi.kr/api/comm/v1/send/omni (A) / https://sandbox-omni.ibapi.kr/v1/send/omni (B)
+ *      BIZGO_TOKEN_URL=(선택) 토큰 발급 주소 덮어쓰기 (B)
+ *      SMS_ENABLED=(선택) false 로 두면 발송하지 않는다
  */
 "use strict";
 
-const DEFAULT_URL = "https://mars.ibapi.kr/api/comm/v1/send/omni";
+const V2_SEND_URL = "https://mars.ibapi.kr/api/comm/v1/send/omni";
+const V1_SEND_URL = "https://omni.ibapi.kr/v1/send/omni";
+const V1_TOKEN_URL = "https://omni.ibapi.kr/v1/auth/token";
+const TIMEOUT_MS = 10000;
+
+function env(k) { return (process.env[k] || "").trim(); }
 
 function config() {
-  const key = (process.env.Bizgo_KEY || process.env.BIZGO_KEY || "").trim();
-  const from = (process.env.BIZGO_FROM || "").replace(/\D/g, "");
-  const url = (process.env.BIZGO_URL || DEFAULT_URL).trim();
-  const enabled = String(process.env.SMS_ENABLED || "true").toLowerCase() !== "false";
-  return { key, from, url, enabled };
+  const clientId = env("BIZGO_CLIENT_ID");
+  const clientPasswd = env("BIZGO_CLIENT_PASSWD");
+  const apiKey = env("Bizgo_KEY") || env("BIZGO_KEY") || env("BIZGO_API_KEY");
+  const mode = clientId && clientPasswd ? "idpw" : apiKey ? "apikey" : "none";
+  return {
+    mode, apiKey, clientId, clientPasswd,
+    from: env("BIZGO_FROM").replace(/\D/g, ""),
+    sendUrl: env("BIZGO_URL") || (mode === "idpw" ? V1_SEND_URL : V2_SEND_URL),
+    tokenUrl: env("BIZGO_TOKEN_URL") || V1_TOKEN_URL,
+    enabled: env("SMS_ENABLED").toLowerCase() !== "false",
+  };
 }
 
 /** 문자 기능 사용 가능 여부와 이유 */
 function status() {
   const c = config();
   if (!c.enabled) return { enabled: false, reason: "SMS_ENABLED=false" };
-  if (!c.key) return { enabled: false, reason: "Bizgo_KEY 없음" };
+  if (c.mode === "none") return { enabled: false, reason: "Bizgo_KEY 또는 BIZGO_CLIENT_ID/BIZGO_CLIENT_PASSWD 없음" };
   if (!c.from) return { enabled: false, reason: "BIZGO_FROM(발신번호) 없음" };
-  return { enabled: true, reason: "" };
+  return { enabled: true, reason: "", mode: c.mode === "idpw" ? "OMNI v1 (ID/PW 토큰)" : "비즈고 v2 (API Key)" };
 }
 
 function minutesText(min) {
@@ -60,6 +81,42 @@ function buildMessage(r) {
   };
 }
 
+async function fetchJson(url, opts) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    const json = await res.json().catch(() => ({}));
+    return { res, json };
+  } finally { clearTimeout(timer); }
+}
+
+// ---- (B) ID/PW 토큰 (24시간 유효, 만료 10분 전에 재발급)
+let tokenCache = { token: "", expiresAt: 0, key: "" };
+async function getToken(c, force) {
+  const cacheKey = c.clientId + "|" + c.tokenUrl;
+  if (!force && tokenCache.token && tokenCache.key === cacheKey && Date.now() < tokenCache.expiresAt - 10 * 60000) return tokenCache.token;
+  const { res, json } = await fetchJson(c.tokenUrl, { method: "POST", headers: { "X-IB-Client-Id": c.clientId, "X-IB-Client-Passwd": c.clientPasswd, "Accept": "application/json" } });
+  const data = json.data || {};
+  if (!res.ok || json.code !== "A000" || !data.token) {
+    const err = new Error(`토큰 발급 실패: ${json.code || res.status} ${json.result || res.statusText}`); err.code = json.code || String(res.status); throw err;
+  }
+  const exp = Date.parse(data.expired || "") || (Date.now() + 23 * 3600000);
+  tokenCache = { token: data.token, expiresAt: exp, key: cacheKey };
+  return data.token;
+}
+
+/** 응답(v1: code/result/data, v2: common/data) 에서 결과를 뽑는다 */
+function parseResult(res, json) {
+  const common = json.common || {};
+  const data = json.data && json.data.destinations ? json : (json.data || {});   // v1 은 최상위, v2 는 data 안
+  const dest = (((data.data || data).destinations) || [])[0] || {};
+  const code = dest.code || data.code || json.code || common.authCode || String(res.status);
+  const result = dest.result || data.result || json.result || common.authResult || res.statusText;
+  const ok = res.ok && code === "A000";
+  return { ok, code, result, msgKey: dest.msgKey, error: ok ? undefined : `${code} ${result}` };
+}
+
 /**
  * 예약 확인 문자 발송
  * @param {{name:string, phone:string(숫자만), date:string, time:string, boothName?:string, retainMinutes?:number, id?:string}} r
@@ -70,30 +127,27 @@ async function sendReservationSms(r) {
   if (!st.enabled) return { ok: false, skipped: true, error: st.reason };
   const c = config();
   const msg = buildMessage(r);
-  const body = {
+  const body = JSON.stringify({
     destinations: [{ to: r.phone, ref: r.id || "" }],
     messageFlow: [{ mms: { from: c.from, title: msg.title, text: msg.text, ttl: "3600" } }],
     ref: "miso-reservation",
-  };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 10000);
+  });
+  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
   try {
-    const res = await fetch(c.url, {
-      method: "POST",
-      headers: { "Authorization": c.key, "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    const json = await res.json().catch(() => ({}));
-    const data = json.data || {};
-    const dest = ((data.data || {}).destinations || [])[0] || {};
-    const code = dest.code || data.code || (json.common || {}).authCode || String(res.status);
-    const ok = res.ok && code === "A000";
-    return { ok, code, result: dest.result || data.result || (json.common || {}).authResult || "", msgKey: dest.msgKey, error: ok ? undefined : `${code} ${dest.result || data.result || res.statusText}` };
+    if (c.mode === "idpw") {
+      headers.Authorization = "Bearer " + await getToken(c, false);
+      let { res, json } = await fetchJson(c.sendUrl, { method: "POST", headers, body });
+      if (res.status === 401 || (json && (json.code === "A001" || json.code === "A100"))) {   // 토큰 만료 등 → 한 번 재발급 후 재시도
+        headers.Authorization = "Bearer " + await getToken(c, true);
+        ({ res, json } = await fetchJson(c.sendUrl, { method: "POST", headers, body }));
+      }
+      return parseResult(res, json);
+    }
+    headers.Authorization = c.apiKey;
+    const { res, json } = await fetchJson(c.sendUrl, { method: "POST", headers, body });
+    return parseResult(res, json);
   } catch (e) {
-    return { ok: false, code: "NET", error: e.name === "AbortError" ? "시간 초과" : e.message };
-  } finally {
-    clearTimeout(timer);
+    return { ok: false, code: e.code || "NET", error: e.name === "AbortError" ? "시간 초과" : e.message };
   }
 }
 

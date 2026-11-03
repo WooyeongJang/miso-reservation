@@ -214,7 +214,7 @@
         return api("admin/reservations", { admin: true }).then(function (d) {
             $("#adminNow").textContent = d.now;
             var ss = d.smsStatus || {};
-            $("#adminSmsStatus").textContent = ss.enabled ? "예약 확인 문자: 발송 중 (비즈고 LMS)" : "예약 확인 문자: 꺼짐 (" + (ss.reason || "설정 없음") + ")";
+            $("#adminSmsStatus").textContent = ss.enabled ? "예약 확인 문자: 켜짐 · " + (ss.mode || "비즈고 LMS") : "예약 확인 문자: 꺼짐 (" + (ss.reason || "설정 없음") + ")";
             $("#resCount").textContent = d.reservations.length;
             resList.innerHTML = "";
             resEmpty.hidden = d.reservations.length > 0;

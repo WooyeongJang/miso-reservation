@@ -27,7 +27,7 @@ const DEFAULT_SETTINGS = {
   slotMinutes: 10,        // 예약 단위(분)
   windowMinutes: 120,     // 지금부터 몇 분 이내만 예약 가능
   retainMinutes: 120,     // 체험 시각이 지나고 몇 분 뒤 자동 삭제
-  boothName: "체험 부스",
+  boothName: "스마트헬스케어 체험부스",
 };
 
 // ---------------------------------------------------------------- 저장소

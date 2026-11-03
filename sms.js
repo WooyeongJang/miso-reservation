@@ -64,7 +64,7 @@ function minutesText(min) {
 /** 예약 확인 문자 본문 (LMS, 2,000 bytes 이내) */
 function buildMessage(r) {
   const [, mm, dd] = r.date.split("-").map(Number);
-  const booth = r.boothName || "체험 부스";
+  const booth = r.boothName || "스마트헬스케어 체험부스";
   return {
     title: `${booth} 예약 완료`,
     text:

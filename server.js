@@ -10,8 +10,10 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+require("./env").loadEnv();                       // .env → process.env (실행 시 환경변수가 우선)
+const sms = require("./sms");
 
-const PORT = Number(process.env.PORT || 5500);
+const PORT = Number(process.env.PORT || 5501);
 const HOST = process.env.HOST || "127.0.0.1";
 const ADMIN_KEY = process.env.ADMIN_KEY || "miso1234";
 const DB_PATH = path.join(__dirname, "data", "db.json");
@@ -119,6 +121,16 @@ function normPhone(v) { return String(v || "").replace(/\D/g, ""); }
 function validPhone(d) { return /^01[016789]\d{7,8}$/.test(d); }
 function fmtPhone(d) { return d.length === 11 ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}` : `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`; }
 
+// ---------------------------------------------------------------- 문자
+async function sendSmsFor(r) {
+  const out = await sms.sendReservationSms({ id: r.id, name: r.name, phone: r.phone, date: r.date, time: r.time, boothName: db.settings.boothName, retainMinutes: db.settings.retainMinutes });
+  const at = new Date().toISOString();
+  if (out.skipped) { console.log(`[sms] skip ${r.time} ${r.name}: ${out.error}`); return { status: "off", at, error: out.error }; }
+  if (out.ok) { console.log(`[sms] sent ${r.time} ${r.name} msgKey=${out.msgKey || "-"}`); return { status: "sent", at, msgKey: out.msgKey }; }
+  console.error(`[sms] FAIL ${r.time} ${r.name}: ${out.error}`); return { status: "failed", at, error: out.error };
+}
+function smsView(r) { return r.sms ? { status: r.sms.status, at: r.sms.at, error: r.sms.error } : { status: "off" }; }
+
 // ---------------------------------------------------------------- 라우팅
 async function handle(req, res) {
   const url = new URL(req.url, "http://localhost");
@@ -159,7 +171,10 @@ async function handle(req, res) {
     const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), name, phone, date: info.date, time, createdAt: new Date().toISOString() };
     db.reservations.push(r);
     saveDb();
-    return sendJson(res, 200, { ok: true, reservation: { id: r.id, name: r.name, phone: fmtPhone(r.phone), date: r.date, time: r.time }, retainMinutes: db.settings.retainMinutes });
+    // 예약 확인 문자 (실패해도 예약은 유지한다)
+    r.sms = await sendSmsFor(r);
+    saveDb();
+    return sendJson(res, 200, { ok: true, reservation: { id: r.id, name: r.name, phone: fmtPhone(r.phone), date: r.date, time: r.time }, retainMinutes: db.settings.retainMinutes, sms: smsView(r) });
   }
 
   // ---- 관리자 API
@@ -189,8 +204,15 @@ async function handle(req, res) {
       const now = nowKst();
       const list = [...db.reservations]
         .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time) || a.createdAt.localeCompare(b.createdAt))
-        .map(r => ({ id: r.id, name: r.name, phone: fmtPhone(r.phone), date: r.date, time: r.time, createdAt: r.createdAt, past: slotToMs(r.date, r.time) < Date.now() }));
-      return sendJson(res, 200, { now: `${kstDateStr(now)} ${kstTimeStr(now)}`, reservations: list });
+        .map(r => ({ id: r.id, name: r.name, phone: fmtPhone(r.phone), date: r.date, time: r.time, createdAt: r.createdAt, past: slotToMs(r.date, r.time) < Date.now(), sms: smsView(r) }));
+      return sendJson(res, 200, { now: `${kstDateStr(now)} ${kstTimeStr(now)}`, reservations: list, smsStatus: sms.status() });
+    }
+    const resend = p.match(/^\/api\/admin\/reservations\/([\w-]+)\/sms$/);
+    if (resend && req.method === "POST") { // 문자 재전송
+      const r = db.reservations.find(x => x.id === resend[1]);
+      if (!r) return sendJson(res, 404, { error: "예약을 찾을 수 없어요." });
+      r.sms = await sendSmsFor(r); saveDb();
+      return sendJson(res, r.sms.ok ? 200 : 502, { ok: r.sms.ok, sms: smsView(r), error: r.sms.ok ? undefined : `문자 발송 실패: ${r.sms.error}` });
     }
     const del = p.match(/^\/api\/admin\/reservations\/([\w-]+)$/);
     if (del && req.method === "DELETE") {
@@ -217,5 +239,6 @@ loadDb();
 http.createServer((req, res) => {
   handle(req, res).catch(err => { console.error(err); try { sendJson(res, 500, { error: "서버 오류" }); } catch (e) { /* ignore */ } });
 }).listen(PORT, HOST, () => {
-  console.log(`[miso-reservation] http://${HOST}:${PORT}  (base path /r/${PORT}/)  admin key: ${ADMIN_KEY === "miso1234" ? "(default)" : "(custom)"}`);
+  const st = sms.status();
+  console.log(`[miso-reservation] http://${HOST}:${PORT}  (base path /r/${PORT}/)  admin key: ${ADMIN_KEY === "miso1234" ? "(default)" : "(custom)"}  sms: ${st.enabled ? "on (bizgo)" : "off - " + st.reason}`);
 });

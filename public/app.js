@@ -144,6 +144,10 @@
                 $("#donePhone").textContent = r.reservation.phone;
                 $("#doneDate").textContent = dateKo(r.reservation.date);
                 bindText("retainText", minutesText(r.retainMinutes));
+                var note = $("#doneSms"), st = (r.sms || {}).status;
+                note.hidden = st !== "sent" && st !== "failed";
+                note.classList.toggle("failed", st === "failed");
+                note.textContent = st === "sent" ? "예약 확인 문자를 보내드렸어요." : st === "failed" ? "확인 문자 발송에 실패했어요. 이 화면을 캡처해 주세요." : "";
                 show("done");
             }).catch(function (e) {
                 alertBox(e.message).then(function () { if (e.data && e.data.refresh) loadSlots(); });
@@ -209,16 +213,29 @@
     function loadReservations() {
         return api("admin/reservations", { admin: true }).then(function (d) {
             $("#adminNow").textContent = d.now;
+            var ss = d.smsStatus || {};
+            $("#adminSmsStatus").textContent = ss.enabled ? "예약 확인 문자: 발송 중 (비즈고 LMS)" : "예약 확인 문자: 꺼짐 (" + (ss.reason || "설정 없음") + ")";
             $("#resCount").textContent = d.reservations.length;
             resList.innerHTML = "";
             resEmpty.hidden = d.reservations.length > 0;
             d.reservations.forEach(function (r) {
                 var el = document.createElement("div");
                 el.className = "res-item" + (r.past ? " is-past" : "");
-                el.innerHTML = '<div class="time"></div><div class="info"><div class="name"></div><div class="phone"><a></a></div></div><button type="button" class="del">삭제</button>';
+                el.innerHTML = '<div class="time"></div><div class="info"><div class="name"></div><div class="phone"><a></a> <span class="sms"></span></div></div><div class="actions"><button type="button" class="del">삭제</button><button type="button" class="resend" hidden>문자 재전송</button></div>';
                 $(".time", el).textContent = r.time;
                 $(".name", el).textContent = r.name + (r.past ? " (지남)" : "");
                 var a = $(".phone a", el); a.textContent = r.phone; a.href = "tel:" + r.phone.replace(/\D/g, "");
+                var sm = r.sms || {}, smEl = $(".sms", el);
+                smEl.className = "sms " + (sm.status || "off");
+                smEl.textContent = sm.status === "sent" ? "문자 전송" : sm.status === "failed" ? "문자 실패" : "문자 없음";
+                if (sm.status === "failed") smEl.title = sm.error || "";
+                var rb = $(".resend", el);
+                rb.hidden = !(ss.enabled && !r.past);
+                rb.addEventListener("click", function () {
+                    rb.disabled = true;
+                    api("admin/reservations/" + r.id + "/sms", { method: "POST", admin: true }).then(function () { alertBox("문자를 다시 보냈어요."); loadReservations(); })
+                        .catch(function (e) { alertBox(e.message); rb.disabled = false; loadReservations(); });
+                });
                 $(".del", el).addEventListener("click", function () {
                     confirmBox(r.time + " " + r.name + " 님 예약을 삭제할까요?", "삭제").then(function (ok) {
                         if (!ok) return;

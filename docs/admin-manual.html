@@ -59,8 +59,8 @@
     <div class="sub">운영 시간 조정 · 예약자 확인 · 개인정보 삭제</div>
   </div>
   <div class="meta">
-    <span>작성일 <b>2026년 11월 1일</b></span>
-    <span>버전 <b>0.1</b></span>
+    <span>작성일 <b>2026년 11월 3일</b></span>
+    <span>버전 <b>0.2</b></span>
     <span>대상 <b>부스 운영 담당자</b></span>
   </div>
 </div>
@@ -95,8 +95,8 @@
   <p>위 값은 모두 관리자 화면의 "시간 설정"에서 바꿀 수 있습니다.</p>
   <table>
     <tr><th style="width:30%">구분</th><th>주소</th></tr>
-    <tr><td>방문객 예약 화면</td><td>https://dev.daonlabs.kr/r/5500/</td></tr>
-    <tr><td>관리자 화면</td><td>https://dev.daonlabs.kr/r/5500/#admin</td></tr>
+    <tr><td>방문객 예약 화면</td><td>https://dev.daonlabs.kr/r/5501/</td></tr>
+    <tr><td>관리자 화면</td><td>https://dev.daonlabs.kr/r/5501/#admin</td></tr>
   </table>
   <p class="footer-note">실제 행사용 주소로 옮기면 위 주소는 달라집니다. 이 문서의 화면은 휴대폰(390×844) 기준으로 캡처했습니다.</p>
 </section>
@@ -137,6 +137,29 @@
         <p>부스 앞 태블릿이나 휴대폰에 이 화면을 열어 두면 다음 손님을 한눈에 볼 수 있습니다. 예약 시간 5분 전쯤 번호를 눌러 "곧 순서입니다"라고 안내하면 노쇼가 줄어듭니다.</p>
       </div>
     </div>
+  </div>
+</section>
+
+  <h3>예약 확인 문자</h3>
+  <p>예약이 완료되면 손님의 휴대폰으로 확인 문자(LMS)가 자동 발송됩니다. 예약 목록의 번호 옆에 발송 상태가 표시되고, 목록 상단에 문자 기능이 켜져 있는지 보입니다.</p>
+  <table>
+    <tr><th style="width:24%">표시</th><th>뜻</th></tr>
+    <tr><td>문자 전송</td><td>정상 발송됨</td></tr>
+    <tr><td>문자 실패</td><td>발송 실패. <b>문자 재전송</b> 버튼으로 다시 보낼 수 있습니다. 예약은 유지됩니다.</td></tr>
+    <tr><td>문자 없음</td><td>문자 기능이 꺼져 있음. 서버의 <code>.env</code> 에 비즈고 API Key 와 발신번호가 없을 때입니다.</td></tr>
+  </table>
+  <div class="notice">
+    <div class="t">발송되는 문자 내용</div>
+    <pre style="background:#fff; color:var(--ink); border:1px solid var(--line); margin:0;">[체험 부스] 예약되었습니다.
+
+■ 예약 시간 : 11월 3일 15:20
+■ 예약자 : 홍길동
+
+예약 시간에 맞춰 부스로 와주세요.
+늦으시면 다음 분께 순서가 넘어갈 수 있어요.
+체험 전에 담당자가 연락드릴 수 있어요.
+
+입력하신 이름과 휴대폰 번호는 체험 후 2시간 뒤 자동 삭제됩니다.</pre>
   </div>
 </section>
 
@@ -237,6 +260,11 @@ kill $(cat logs/server.pid)
 
 # 로그 확인
 tail -f logs/server.log</pre>
+  <h3>문자 설정 (.env)</h3>
+<pre>Bizgo_KEY=비즈고 콘솔(연동관리)에서 발급한 통합 API Key
+BIZGO_FROM=비즈고에 사전 등록된 발신번호 (숫자만)
+# SMS_ENABLED=false   # 문자 끄기</pre>
+  <p>비즈고 콘솔의 연동관리에서 서버 공인 IP(61.81.223.66)를 허용 목록에 등록해야 합니다. 설정을 바꾸면 서버를 재시작하세요.</p>
   <h3>데이터</h3>
   <ul>
     <li>설정과 예약은 <code>data/db.json</code> 한 파일에 저장됩니다. 백업은 이 파일만 복사하면 됩니다.</li>
@@ -257,6 +285,7 @@ tail -f logs/server.log</pre>
     <tr><td>손님이 고른 시간이 "방금 다른 분이 예약한 시간"이라고 나옴</td><td>거의 동시에 다른 손님이 먼저 예약한 경우입니다. 목록이 자동으로 새로 고쳐지니 다른 시간을 고르게 안내하세요.</td></tr>
     <tr><td>관리자 화면이 갑자기 로그인 화면으로 돌아감</td><td>서버에서 비밀번호가 바뀌었거나 서버가 재시작된 경우입니다. 다시 로그인하세요.</td></tr>
     <tr><td>설정 저장이 안 됨</td><td>안내 문구를 확인하세요. 종료 시각이 시작보다 이르거나, 숫자 범위를 벗어난 경우 저장되지 않습니다.</td></tr>
+    <tr><td>예약 목록에 "문자 실패"가 뜸</td><td>표시를 길게 누르면 이유가 보입니다. A401·A100은 API Key 오류, A327은 미등록 발신번호, 50009는 IP 미허용입니다. 서버 담당자에게 .env 와 비즈고 콘솔 설정을 확인해 달라고 하세요. 원인을 고친 뒤 <b>문자 재전송</b>을 누릅니다.</td></tr>
     <tr><td>화면이 전혀 열리지 않음</td><td>서버가 꺼져 있을 수 있습니다. 서버 담당자에게 8장의 실행 명령으로 다시 띄워 달라고 요청하세요.</td></tr>
   </table>
 </section>
